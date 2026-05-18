@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REMNANT // Dream Reconstruction Engine</title>
+    <style>
+        :root {
+            --bg-space: #030307;
+            --bg-card: rgba(8, 8, 16, 0.75);
+            --border-glow: rgba(100, 150, 255, 0.15);
+            --text-primary: #e2e8f0;
+            --text-muted: #64748b;
+            --accent-cyan: #00f2fe;
+            --accent-purple: #9d4edd;
+            --font-mono: 'Courier New', Courier, monospace;
+            --panel-width: 380px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-space);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Ambient Global Layer */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+
+        /* Interface Wrapper */
+        .app-container {
+            position: relative;
+            z-index: 10;
+            display: grid;
+            grid-template-columns: var(--panel-width) 1fr;
+            height: 100vh;
+            transition: all 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* Cinematic Mode Layout Shift */
+        body.cinematic-active .app-container {
+            grid-template-columns: 0px 1fr;
+        }
+
+        body.cinematic-active .sidebar {
+            transform: translateX(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Left Control Panel */
+        .sidebar {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-glow);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            overflow-y: auto;
+            transition: all 1.2s ease;
+            z-index: 20;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+
+        .brand h1 {
+            font-family: var(--font-mono);
+            font-size: 2rem;
+            letter-spacing: 0.6rem;
+            background: linear-gradient(45deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 242, 254, 0.2);
+        }
+
+        .brand p {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.15rem;
+            margin-top: 0.3rem;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, var(--border-glow), transparent);
+            width: 100%;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        input, textarea, select {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 0.75rem;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        textarea {
+            resize: none;
+            height: 70px;
+        }
+
+        /* Metrics Grid Dashboard Panels */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 0.75rem;
+        }
+
+        .metric-title {
+            font-size: 0.6rem;
+            font-family: var(--font-mono);
+            letter-spacing: 0.1rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            font-family: var(--font-mono);
+            color: var(--accent-cyan);
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-desc {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            line-height: 1.3;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, rgba(157, 78, 221, 0.2), rgba(0, 242, 254, 0.2));
+            border: 1px solid rgba(0, 242, 254, 0.5);
+            color: var(--text-primary);
+            padding: 0.9rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.15rem;
+            font-size: 0.8rem;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, rgba(157, 78, 221, 0.4), rgba(0, 242, 254, 0.4));
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.3);
+            border-color: var(--accent-cyan);
+            letter-spacing: 0.2rem;
+        }
+
+        .btn-cinema {
+            border-color: var(--accent-purple);
+            background: rgba(157, 78, 221, 0.1);
+            margin-top: 0.3rem;
+        }
+        
+        .btn-cinema:hover {
+            border-color: #e0aaff;
+            box-shadow: 0 0 25px rgba(157, 78, 221, 0.3);
+        }
+
+        /* Right Workspace Canvas System */
+        .workspace {
+            position: relative;
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            height: 100vh;
+            transition: all 1.5s ease;
+        }
+
+        body.cinematic-active .workspace {
+            grid-template-rows: 1fr 0px;
+        }
+
+        .canvas-viewport {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .canvas-viewport:last-child {
+            border-bottom: none;
+        }
+
+        body.cinematic-active .canvas-viewport:last-child {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .viewport-tag {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.2rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            background: rgba(0,0,0,0.4);
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.05);
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        /* Psychological Humanized Interpretation Panel - Fixed to Bottom Left with clean space spacing boundaries */
+        .interpretation-overlay {
+            position: absolute;
+            bottom: 2rem;
+            left: 2rem;
+            background: rgba(5, 5, 10, 0.85);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(157, 78, 221, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            z-index: 30;
+            transform: translateY(150%);
+            opacity: 0;
+            transition: all 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+            max-width: 650px;
+            width: calc(100% - 4rem);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
+
+        body.cinematic-active .interpretation-overlay.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .poem-title {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            letter-spacing: 0.3rem;
+            color: var(--accent-cyan);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .poem-content {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: #cbd5e1;
+            font-style: italic;
+            font-weight: 300;
+        }
+
+        /* Cinematic Escape HUD Trigger */
+        .exit-cinema {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-20px);
+            transition: all 1s ease;
+        }
+
+        body.cinematic-active .exit-cinema {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        /* Cinematic Loading Materialization State */
+        .materialize-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1.5s ease;
+        }
+
+        .materialize-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .loading-text {
+            font-family: var(--font-mono);
+            letter-spacing: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            animation: pulseText 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseText {
+            0%, 100% { opacity: 0.3; letter-spacing: 0.5rem; }
+            50% { opacity: 1; letter-spacing: 0.7rem; }
+        }
+
+        .hud-instructions {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="materialize-overlay" id="loader">
+        <div class="loading-text">SYNTHESIZING SUB_CONSCIOUS VECTOR FIELD</div>
+    </div>
+
+    <button class="btn exit-cinema" onclick="exitCinematicMode()">// WAKE UP (EXIT)</button>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <h1>REMNANT</h1>
+                <p>Dream Reconstruction Engine</p>
+            </div>
+            
+            <div class="divider"></div>
+
+            <form id="dream-input-form" onsubmit="compileDreamState(event)">
+                <div class="form-group">
+                    <label>Narrative Stream</label>
+                    <textarea id="raw-narrative" placeholder="A long corridor winding into black water... the sky was burning green..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Core Affective State</label>
+                    <select id="dream-affect">
+                        <option value="Anxiety">Anxiety // Crimson Geometry</option>
+                        <option value="Melancholy">Melancholy // Ocean Mist</option>
+                        <option value="Euphoria">Euphoria // Solar Gold</option>
+                        <option value="Serenity">Serenity // Abyssal Jade</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Floating Symbols</label>
+                    <input type="text" id="dream-symbols" placeholder="stairs, clock, mirror, eye" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Manifested Entities</label>
+                    <input type="text" id="dream-entities" placeholder="the stranger, shadow, geometric guide">
+                </div>
+
+                <div class="form-group">
+                    <label>Subconscious Geometry</label>
+                    <input type="text" id="dream-geometry" placeholder="endless tower, inverted sky, maze">
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%; margin-top: 0.5rem;">INTEGRATE DATA MATRIX</button>
+            </form>
+
+            <div class="divider"></div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Dream Coherence</div>
+                    <div class="metric-value" id="val-coherence">0.00</div>
+                    <div class="metric-desc">Continuity and stable narrative tracking sequence.</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Semantic Density</div>
+                    <div class="metric-value" id="val-density">0.00</div>
+                    <div class="metric-desc">Symbolic compression and linguistic richness factors.</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Instability</div>
+                    <div class="metric-value" id="val-instability">0%</div>
+                    <div class="metric-desc">Emotional volatility and surreal variance parameters.</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Archetype Matrix</div>
+                    <div class="metric-value" id="val-archetype" style="font-size: 0.85rem; line-height: 1.4; padding-top: 2px;">Awaiting Data</div>
+                    <div class="metric-desc">Primary subconscious alignment taxonomy profile.</div>
+                </div>
+            </div>
+
+            <button class="btn btn-cinema" id="cinema-trigger-btn" onclick="enterCinematicMode()" style="display: none;">RECONSTRUCT DREAM (CINEMATIC)</button>
+        </aside>
+
+        <main class="workspace">
+            <div class="canvas-viewport" id="viewport-surreal">
+                <div class="viewport-tag">// Engine Canvas Matrix: Surreal Generation Layer</div>
+                <canvas id="surreal-canvas"></canvas>
+            </div>
+
+            <div class="canvas-viewport" id="viewport-nodes">
+                <div class="viewport-tag">// Structural Schema: Semantic Graph Linker</div>
+                <canvas id="nodes-canvas"></canvas>
+                <div class="hud-instructions">Drag to pan map // Scroll to scale dimensions</div>
+            </div>
+
+            <div class="interpretation-overlay" id="poetry-panel">
+                <div class="poem-title">// Subconscious Alignment Synthesis</div>
+                <div class="poem-content" id="poem-text">Your consciousness is quiet. Input architecture streams to initialize neural matrix synthesis loops.</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- GLOBAL ENVIRONMENT STATE ---
+        let currentAffect = "Anxiety";
+        let dreamTokens = { symbols: [], entities: [], geometry: "" };
+        
+        const AffectConfig = {
+            Serenity: { primary: '#00f2fe', secondary: '#0077b6', background: '#020b14', speed: 0.4, particleCount: 80, fog: 'rgba(2, 11, 20, 0.4)' },
+            Melancholy: { primary: '#7209b7', secondary: '#3f37c9', background: '#05030a', speed: 0.2, particleCount: 50, fog: 'rgba(5, 3, 10, 0.5)' },
+            Anxiety: { primary: '#f72585', secondary: '#b5179e', background: '#0d0208', speed: 1.4, particleCount: 140, fog: 'rgba(13, 2, 8, 0.35)' },
+            Euphoria: { primary: '#ffb703', secondary: '#fb8500', background: '#0f0a02', speed: 0.8, particleCount: 110, fog: 'rgba(15, 10, 2, 0.4)' }
+        };
+
+        // Canvas Setup
+        const bgCanvas = document.getElementById('bg-canvas');
+        const surrealCanvas = document.getElementById('surreal-canvas');
+        const nodesCanvas = document.getElementById('nodes-canvas');
+
+        const bgCtx = bgCanvas.getContext('2d');
+        const surrealCtx = surrealCanvas.getContext('2d');
+        const nodesCtx = nodesCanvas.getContext('2d');
+
+        function resizeAllCanvases() {
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+            
+            const sRect = surrealCanvas.parentElement.getBoundingClientRect();
+            surrealCanvas.width = sRect.width;
+            surrealCanvas.height = sRect.height;
+
+            const nRect = nodesCanvas.parentElement.getBoundingClientRect();
+            nodesCanvas.width = nRect.width;
+            nodesCanvas.height = nRect.height;
+        }
+        window.addEventListener('resize', resizeAllCanvases);
+        setTimeout(resizeAllCanvases, 100);
+
+        // --- BACKGROUND AMBIENCE PIPELINE ---
+        let globalParticles = [];
+        class GlobalParticle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * window.innerWidth;
+                this.y = Math.random() * window.innerHeight;
+                this.size = Math.random() * 2 + 0.5;
+                this.vx = (Math.random() - 0.5) * 0.3;
+                this.vy = (Math.random() - 0.5) * 0.3;
+                this.alpha = Math.random() * 0.4;
+            }
+            render() {
+                this.x += this.vx * AffectConfig[currentAffect].speed;
+                this.y += this.vy * AffectConfig[currentAffect].speed;
+                if(this.x<0 || this.x>window.innerWidth || this.y<0 || this.y>window.innerHeight) this.reset();
+                bgCtx.fillStyle = AffectConfig[currentAffect].primary;
+                bgCtx.globalAlpha = this.alpha;
+                bgCtx.beginPath();
+                bgCtx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                bgCtx.fill();
+            }
+        }
+        for(let i=0; i<100; i++) globalParticles.push(new GlobalParticle());
+
+        function runBgEngine() {
+            bgCtx.fillStyle = AffectConfig[currentAffect].background;
+            bgCtx.globalAlpha = 1;
+            bgCtx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
+            globalParticles.forEach(p => p.render());
+            requestAnimationFrame(runBgEngine);
+        }
+        runBgEngine();
+
+
+        // --- ENGINE LAYER 1: SURREAL SCENE SYNTHESIZER ---
+        let surrealElements = [];
+        
+        class SurrealElement {
+            constructor(text, category) {
+                this.text = text.toUpperCase();
+                this.category = category; // 'symbol', 'entity', 'geometry'
+                this.x = Math.random() * 500 - 250;
+                this.y = Math.random() * 300 - 150;
+                this.z = Math.random() * 400 + 100; // Depth map coordinates
+                this.scale = Math.random() * 0.5 + 0.5;
+                this.angle = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.01;
+                this.seed = Math.random() * 100;
+            }
+
+            updateAndRender(ctx, w, h, time) {
+                const modSpeed = AffectConfig[currentAffect].speed;
+                this.angle += this.rotSpeed * modSpeed;
+                this.z -= 0.2 * modSpeed;
+                if (this.z <= 10) this.z = 500;
+
+                const perspective = 350 / (this.z || 1);
+                
+                // Offset calculation matrices dynamically adjusted toward the top hemisphere to ensure absolute isolation from bottom layout text cards
+                const screenX = w / 2 + this.x * perspective;
+                const screenY = (h / 2.8) + this.y * perspective;
+
+                if (screenX < -200 || screenX > w + 200 || screenY < -200 || screenY > h + 200) return;
+
+                ctx.save();
+                ctx.translate(screenX, screenY);
+                ctx.rotate(this.angle + Math.sin(time * 0.001 + this.seed) * 0.1);
+                
+                const alpha = Math.min(1, (500 - this.z) / 150) * (this.z / 500);
+                ctx.globalAlpha = alpha;
+
+                const cfg = AffectConfig[currentAffect];
+
+                if (this.category === 'symbol') {
+                    ctx.strokeStyle = cfg.primary;
+                    ctx.shadowColor = cfg.primary;
+                    ctx.shadowBlur = 15;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -25 * perspective);
+                    ctx.lineTo(15 * perspective, 0);
+                    ctx.lineTo(0, 25 * perspective);
+                    ctx.lineTo(-15 * perspective, 0);
+                    ctx.closePath();
+                    ctx.stroke();
+                } else if (this.category === 'entity') {
+                    ctx.fillStyle = cfg.secondary;
+                    ctx.shadowColor = cfg.secondary;
+                    ctx.shadowBlur = 20;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 15 * perspective + Math.cos(time*0.003 + this.seed)*4, 0, Math.PI*2);
+                    ctx.fill();
+                } else {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(-50 * perspective, -50 * perspective, 100 * perspective, 100 * perspective);
+                }
+
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.font = `bold ${Math.max(8, Math.floor(10 * perspective))}px ${getComputedStyle(document.body).getPropertyValue('--font-mono')}`;
+                ctx.textAlign = 'center';
+                ctx.fillText(this.text, 0, 4 * perspective);
+
+                ctx.restore();
+            }
+        }
+
+        function initSurrealEngine() {
+            surrealElements = [];
+            surrealElements.push(new SurrealElement("SUB_CONSCIOUS", "geometry"));
+            surrealElements.push(new SurrealElement("DREAM_CORE", "symbol"));
+        }
+        initSurrealEngine();
+
+        function runSurrealEngine(timestamp) {
+            const w = surrealCanvas.width;
+            const h = surrealCanvas.height;
+            
+            surrealCtx.fillStyle = AffectConfig[currentAffect].fog;
+            surrealCtx.fillRect(0, 0, w, h);
+
+            surrealCtx.strokeStyle = 'rgba(255,255,255,0.015)';
+            surrealCtx.lineWidth = 1;
+            surrealCtx.beginPath();
+            surrealCtx.moveTo(0,0); surrealCtx.lineTo(w, h);
+            surrealCtx.moveTo(w,0); surrealCtx.lineTo(0, h);
+            surrealCtx.stroke();
+
+            surrealElements.forEach(el => el.updateAndRender(surrealCtx, w, h, timestamp));
+
+            requestAnimationFrame(runSurrealEngine);
+        }
+        requestAnimationFrame(runSurrealEngine);
+
+
+        // --- ENGINE LAYER 2: GRAPH NEURAL MAP VISUALIZER ---
+        let nodes = [];
+        let links = [];
+        let nodeTransform = { x: 0, y: 0, scale: 1 };
+        let isMapDragging = false;
+        let mapDragStart = { x: 0, y: 0 };
+
+        const seedNodes = [
+            { id: 'origin', label: 'NEURAL AXIS', type: 'System', emotion: 'Anxiety', x: 0, y: 0 },
+            { id: 'id', label: 'THE ID', type: 'Archetype', emotion: 'Melancholy', x: -140, y: -80 },
+            { id: 'ego', label: 'EGO BLOCK', type: 'Archetype', emotion: 'Anxiety', x: 140, y: 80 }
+        ];
+        seedNodes.forEach(n => nodes.push({...n, vx: 0, vy: 0, radius: 12, pulse: Math.random()*10}));
+        links.push({ source: 'origin', target: 'id' }, { source: 'origin', target: 'ego' });
+
+        function runNodesEngine() {
+            const w = nodesCanvas.width;
+            const h = nodesCanvas.height;
+            
+            nodesCtx.fillStyle = 'rgba(5, 5, 12, 0.4)';
+            nodesCtx.fillRect(0, 0, w, h);
+
+            const k = 0.03;
+            nodes.forEach(n => {
+                nodes.forEach(o => {
+                    if (n.id === o.id) return;
+                    let dx = o.x - n.x;
+                    let dy = o.y - n.y;
+                    let d = Math.sqrt(dx*dx + dy*dy) || 1;
+                    if(d < 180) {
+                        let f = 30 / (d * d);
+                        n.vx -= dx * f; n.vy -= dy * f;
+                    }
+                });
+            });
+
+            links.forEach(l => {
+                let s = nodes.find(n => n.id === l.source);
+                let t = nodes.find(n => n.id === l.target);
+                if(!s || !t) return;
+                let dx = t.x - s.x;
+                let dy = t.y - s.y;
+                let d = Math.sqrt(dx*dx + dy*dy) || 1;
+                let f = (d - 120) * k;
+                s.vx += (dx / d) * f; s.vy += (dy / d) * f;
+                t.vx -= (dx / d) * f; t.vy -= (dy / d) * f;
+            });
+
+            nodes.forEach(n => {
+                n.vx *= 0.8; n.vy *= 0.8;
+                n.x += n.vx; n.y += n.vy;
+                n.pulse += 0.03;
+            });
+
+            nodesCtx.save();
+            nodesCtx.translate(w/2 + nodeTransform.x, h/2 + nodeTransform.y);
+            nodesCtx.scale(nodeTransform.scale, nodeTransform.scale);
+
+            links.forEach(l => {
+                let s = nodes.find(n => n.id === l.source);
+                let t = nodes.find(n => n.id === l.target);
+                if(!s || !t) return;
+                nodesCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+                nodesCtx.lineWidth = 1;
+                nodesCtx.beginPath();
+                nodesCtx.moveTo(s.x, s.y);
+                nodesCtx.lineTo(t.x, t.y);
+                nodesCtx.stroke();
+            });
+
+            nodes.forEach(n => {
+                const config = AffectConfig[n.emotion] || AffectConfig.Serenity;
+                const r = n.radius + Math.sin(n.pulse) * 1.5;
+
+                nodesCtx.fillStyle = config.primary;
+                nodesCtx.shadowColor = config.primary;
+                nodesCtx.shadowBlur = 12;
+                nodesCtx.beginPath();
+                nodesCtx.arc(n.x, n.y, r, 0, Math.PI*2);
+                nodesCtx.fill();
+                nodesCtx.shadowBlur = 0;
+
+                nodesCtx.fillStyle = 'rgba(255,255,255,0.8)';
+                nodesCtx.font = `9px ${getComputedStyle(document.body).getPropertyValue('--font-mono')}`;
+                nodesCtx.textAlign = 'center';
+                nodesCtx.fillText(n.label, n.x, n.y - r - 6);
+            });
+
+            nodesCtx.restore();
+            requestAnimationFrame(runNodesEngine);
+        }
+        requestAnimationFrame(runNodesEngine);
+
+        nodesCanvas.addEventListener('mousedown', (e) => {
+            isMapDragging = true;
+            mapDragStart.x = e.clientX - nodeTransform.x;
+            mapDragStart.y = e.clientY - nodeTransform.y;
+        });
+        window.addEventListener('mousemove', (e) => {
+            if(!isMapDragging) return;
+            nodeTransform.x = e.clientX - mapDragStart.x;
+            nodeTransform.y = e.clientY - mapDragStart.y;
+        });
+        window.addEventListener('mouseup', () => isMapDragging = false);
+        nodesCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if(e.deltaY < 0) nodeTransform.scale = Math.min(nodeTransform.scale + 0.05, 2);
+            else nodeTransform.scale = Math.max(nodeTransform.scale - 0.05, 0.5);
+        }, { passive: false });
+
+
+        // --- REAL-TIME SECTOR INPUT ALGORITHMIC CONVERTER ---
+        function calculateDynamicMetrics(text, symbols, entities, geometry) {
+            // Formula metrics calculations built directly upon user processing streams lengths
+            const textLen = text.length;
+            const symbolCount = symbols.filter(s => s.trim().length > 0).length;
+            const entityCount = entities.filter(e => e.trim().length > 0).length;
+            const geometricWeight = geometry.trim().length > 0 ? 0.15 : 0.02;
+
+            // Semantic Density calculated dynamically via textual variance and compression ratios
+            let calculatedDensity = 0.35 + (symbolCount * 0.08) + (entityCount * 0.05) + (textLen * 0.0005);
+            calculatedDensity = Math.min(0.98, Math.max(0.20, calculatedDensity)).toFixed(2);
+
+            // Dream Coherence calculated dynamically
+            let calculatedCoherence = 0.85 - (symbolCount * 0.04) - (entityCount * 0.03) + (textLen * 0.0003);
+            calculatedCoherence = Math.min(0.95, Math.max(0.15, calculatedCoherence)).toFixed(2);
+
+            // Instability index calculation
+            let calculatedInstability = Math.floor(20 + (symbolCount * 6) + (entityCount * 4) + (geometricWeight * 100));
+            calculatedInstability = Math.min(99, Math.max(5, calculatedInstability));
+
+            // Select matching profile classification archetype taxonomy
+            let archetypeStr = "Shadow Conflict";
+            if (calculatedDensity > 0.75 && calculatedInstability > 50) archetypeStr = "Anima Splice";
+            else if (calculatedCoherence > 0.70 && calculatedInstability < 30) archetypeStr = "Ego Synthesis";
+            else if (symbolCount > 4) archetypeStr = "Mythic Overload";
+            else if (entityCount > 2) archetypeStr = "Collective Echo";
+
+            // Bind into interface container markers
+            document.getElementById('val-density').innerText = calculatedDensity;
+            document.getElementById('val-coherence').innerText = calculatedCoherence;
+            document.getElementById('val-instability').innerText = `${calculatedInstability}%`;
+            document.getElementById('val-archetype').innerText = archetypeStr;
+
+            return { density: calculatedDensity, coherence: calculatedCoherence, instability: calculatedInstability, archetype: archetypeStr };
+        }
+
+        // --- FORM SUBMISSION & STATE COMPILING PROCESSOR ---
+        function compileDreamState(e) {
+            e.preventDefault();
+
+            const narrativeText = document.getElementById('raw-narrative').value;
+            currentAffect = document.getElementById('dream-affect').value;
+            
+            dreamTokens.symbols = document.getElementById('dream-symbols').value.split(',');
+            dreamTokens.entities = document.getElementById('dream-entities').value.split(',');
+            dreamTokens.geometry = document.getElementById('dream-geometry').value;
+
+            // Process fully dynamic metrics computations updating structural DOM layouts immediately
+            const metrics = calculateDynamicMetrics(narrativeText, dreamTokens.symbols, dreamTokens.entities, dreamTokens.geometry);
+
+            surrealElements = [];
+            
+            if(dreamTokens.geometry) {
+                surrealElements.push(new SurrealElement(dreamTokens.geometry.trim(), 'geometry'));
+            }
+            dreamTokens.symbols.forEach(s => {
+                if(s.trim()) surrealElements.push(new SurrealElement(s.trim(), 'symbol'));
+            });
+            dreamTokens.entities.forEach(ent => {
+                if(ent.trim()) surrealElements.push(new SurrealElement(ent.trim(), 'entity'));
+            });
+
+            const batchId = `node_${Date.now()}`;
+            const shortLabel = narrativeText.substring(0, 12) + '...';
+            
+            nodes.push({ id: batchId, label: shortLabel.toUpperCase(), type: 'Stream', emotion: currentAffect, x: Math.random()*200-100, y: Math.random()*200-100, vx:0, vy:0, radius:10, pulse:Math.random() });
+            links.push({ source: 'origin', target: batchId });
+
+            dreamTokens.symbols.forEach((s, idx) => {
+                if(!s.trim()) return;
+                const sId = `sym_${s.trim()}_${idx}`;
+                nodes.push({ id: sId, label: s.trim().toUpperCase(), type: 'Symbol', emotion: currentAffect, x: Math.random()*300-150, y: Math.random()*300-150, vx:0, vy:0, radius:7, pulse:Math.random() });
+                links.push({ source: batchId, target: sId });
+            });
+
+            generateHumanPoetry(currentAffect, dreamTokens, metrics);
+
+            document.getElementById('cinema-trigger-btn').style.display = 'block';
+        }
+
+        function generateHumanPoetry(affect, tokens, metrics) {
+            const poemContainer = document.getElementById('poem-text');
+            
+            const firstSymbol = tokens.symbols[0]?.trim() || "unnamed form";
+            const mainGeometry = tokens.geometry?.trim() || "infinite spaces";
+            
+            let prose = "";
+            switch(affect) {
+                case 'Serenity':
+                    prose = `The mind constructs an architecture of total quietude. The repeating presence of the "${firstSymbol}" acts as an anchor inside the lines of ${mainGeometry}. REMNANT detected a semantic density of ${metrics.density} and an instability tracking index of ${metrics.instability}%. You are floating through deep integrated layers where memory frames naturally align without gravity.`;
+                    break;
+                case 'Melancholy':
+                    prose = `A quiet, beautiful mourning loops inside your structural core. Winding through "${mainGeometry}", the subconscious uses "${firstSymbol}" to symbolize a soft processing return. With an evaluated semantic density profile totaling ${metrics.density}, the system confirms an integrated ${metrics.archetype} configuration sequence, beautifully safe, reconstructing old rooms out of glowing mist.`;
+                    break;
+                case 'Anxiety':
+                    prose = `The neural array maps high velocity static fragmentation fields. Shifting violently around "${mainGeometry}", the shadow projection of "${firstSymbol}" reveals a boundary defense cycle. With semantic density peaking at ${metrics.density}, your system is over-processing, creating a distinct ${metrics.archetype} layout structure with ${metrics.instability}% volatility indicators.`;
+                    break;
+                case 'Euphoria':
+                    prose = `An expansive, radiant eruption spills across your semantic coordinates. The boundary fields of "${mainGeometry}" are melting completely. In this space, "${firstSymbol}" behaves like a solar flare, reflecting a high density rating of ${metrics.density} where cognitive barriers drop and the unconscious communicates through raw, blinding freedom.`;
+                    break;
+            }
+            
+            poemContainer.innerText = prose;
+        }
+
+
+        // --- CINEMATIC EXPERIMENTAL WORKSPACE MODES ---
+        function enterCinematicMode() {
+            const loader = document.getElementById('loader');
+            loader.classList.add('active');
+
+            setTimeout(() => {
+                document.body.classList.add('cinematic-active');
+                resizeAllCanvases();
+                
+                setTimeout(() => {
+                    loader.classList.remove('active');
+                    document.getElementById('poetry-panel').classList.add('visible');
+                }, 1500);
+
+            }, 1200);
+        }
+
+        function exitCinematicMode() {
+            document.getElementById('poetry-panel').classList.remove('visible');
+            document.body.classList.remove('cinematic-active');
+            setTimeout(resizeAllCanvases, 1500);
+        }
+    </script>
+</body>
+</html>
