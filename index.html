@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REMNANT // Contextual Dream Reconstruction Engine</title>
+
+<style>
+
+:root{
+    --bg:#05070d;
+    --panel:#0d1017;
+    --accent:#00e5ff;
+    --accent2:#9d4edd;
+    --text:#f1f5f9;
+    --muted:#7c8799;
+    --line:#1f2635;
+    --mono:'Courier New',monospace;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    background:black;
+    color:var(--text);
+    overflow:hidden;
+    font-family:Inter,system-ui,sans-serif;
+}
+
+.app{
+    display:grid;
+    grid-template-columns:360px 1fr;
+    height:100vh;
+}
+
+.sidebar{
+    background:rgba(8,10,15,.96);
+    border-right:1px solid var(--line);
+    padding:24px;
+    overflow:auto;
+}
+
+.brand h1{
+    font-size:2.5rem;
+    font-family:var(--mono);
+    color:var(--accent);
+    letter-spacing:.45rem;
+}
+
+.brand p{
+    color:var(--muted);
+    margin-top:10px;
+    font-size:.72rem;
+    letter-spacing:.22rem;
+    text-transform:uppercase;
+    font-family:var(--mono);
+}
+
+.group{
+    margin-top:24px;
+}
+
+label{
+    display:block;
+    margin-bottom:10px;
+    font-size:.7rem;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.16rem;
+    font-family:var(--mono);
+}
+
+textarea,input,select{
+    width:100%;
+    background:#0f1420;
+    border:1px solid #21293b;
+    color:white;
+    border-radius:10px;
+    padding:14px;
+    font-size:.95rem;
+}
+
+textarea{
+    resize:none;
+    min-height:120px;
+}
+
+button{
+    width:100%;
+    margin-top:22px;
+    border:none;
+    border-radius:12px;
+    padding:16px;
+    cursor:pointer;
+    background:linear-gradient(135deg,var(--accent2),var(--accent));
+    color:white;
+    font-family:var(--mono);
+    letter-spacing:.2rem;
+    text-transform:uppercase;
+    font-weight:700;
+}
+
+.metrics{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:24px;
+}
+
+.metric{
+    background:#0f131d;
+    border:1px solid #1e2536;
+    border-radius:14px;
+    padding:14px;
+}
+
+.metric h3{
+    color:var(--muted);
+    font-size:.64rem;
+    letter-spacing:.12rem;
+    margin-bottom:10px;
+    text-transform:uppercase;
+    font-family:var(--mono);
+}
+
+.metric .value{
+    font-size:1.8rem;
+    font-weight:700;
+    color:var(--accent);
+}
+
+.metric p{
+    margin-top:8px;
+    font-size:.74rem;
+    color:#9ca6ba;
+    line-height:1.45;
+}
+
+.workspace{
+    position:relative;
+}
+
+canvas{
+    width:100%;
+    height:100%;
+    display:block;
+}
+
+.analysis{
+    position:absolute;
+    right:24px;
+    bottom:24px;
+    width:430px;
+    background:rgba(7,10,15,.92);
+    border:1px solid #232b40;
+    border-radius:18px;
+    padding:24px;
+    backdrop-filter:blur(20px);
+}
+
+.analysis h2{
+    color:var(--accent);
+    font-family:var(--mono);
+    letter-spacing:.2rem;
+    margin-bottom:16px;
+    font-size:.9rem;
+}
+
+.analysis p{
+    line-height:1.75;
+    color:#d3d9e7;
+}
+
+.small{
+    margin-top:16px;
+    border-top:1px solid #1f2535;
+    padding-top:14px;
+}
+
+.small div{
+    margin-bottom:10px;
+    font-size:.77rem;
+    color:#9ca8bc;
+    line-height:1.5;
+}
+
+.top{
+    position:absolute;
+    top:18px;
+    right:24px;
+    font-size:.7rem;
+    letter-spacing:.2rem;
+    font-family:var(--mono);
+    color:#7d8799;
+    text-transform:uppercase;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<div class="sidebar">
+
+<div class="brand">
+<h1>REMNANT</h1>
+<p>Contextual Dream Reconstruction Engine</p>
+</div>
+
+<div class="group">
+<label>Narrative Fragment</label>
+
+<textarea id="narrative">
+A masked emperor chased me through a collapsing neon city while my mother tried to shield me from the attack.
+</textarea>
+</div>
+
+<div class="group">
+<label>Dominant Emotion</label>
+
+<select id="emotion">
+<option>Anxiety</option>
+<option>Melancholy</option>
+<option>Euphoria</option>
+<option>Serenity</option>
+</select>
+</div>
+
+<button onclick="runRemnant()">
+Reconstruct Dream
+</button>
+
+<div class="metrics">
+
+<div class="metric">
+<h3>Dream Coherence</h3>
+<div class="value" id="coherence">0.00</div>
+<p id="coherenceDesc"></p>
+</div>
+
+<div class="metric">
+<h3>Semantic Density</h3>
+<div class="value" id="density">0.00</div>
+<p id="densityDesc"></p>
+</div>
+
+<div class="metric">
+<h3>Instability</h3>
+<div class="value" id="instability">0%</div>
+<p id="instabilityDesc"></p>
+</div>
+
+<div class="metric">
+<h3>Archetype</h3>
+<div class="value" style="font-size:1rem" id="archetype">Unknown</div>
+<p id="archDesc"></p>
+</div>
+
+</div>
+
+</div>
+
+<div class="workspace">
+
+<div class="top">
+// CONTEXTUAL DREAM VISUALIZATION LAYER
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div class="analysis">
+
+<h2>// SUBCONSCIOUS INTERPRETATION</h2>
+
+<p id="analysisText">
+Awaiting reconstruction.
+</p>
+
+<div class="small">
+
+<div>
+<b>Dream Coherence</b> derives from narrative continuity, entity persistence, and logical scene flow.
+</div>
+
+<div>
+<b>Semantic Density</b> derives from symbolic diversity, archetypal overlap, and descriptive richness.
+</div>
+
+<div>
+<b>Instability</b> derives from emotional volatility, violent semantics, and surreal contradiction density.
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize",resize);
+
+const semanticGroups = {
+
+threats:[
+"villain","monster","attacker","enemy",
+"assassin","creature","hunter","shadow",
+"demon","emperor","killer","robot"
+],
+
+caregivers:[
+"mother","father","guardian","parent",
+"sister","brother","friend","protector"
+],
+
+locations:[
+"city","school","ocean","forest",
+"void","maze","corridor","temple",
+"castle","room","tower"
+],
+
+surreal:[
+"floating","endless","burning",
+"upside-down","distorted","looping",
+"melting","impossible","neon"
+],
+
+violence:[
+"attack","chase","kill","scream",
+"fight","collapse","explode","destroy"
+],
+
+connectors:[
+"while","because","through","inside",
+"after","before","toward","until"
+]
+
+};
+
+function tokenize(text){
+
+return text
+.toLowerCase()
+.replace(/[^\w\s-]/g,"")
+.split(/\s+/)
+.filter(Boolean);
+
+}
+
+function semanticCount(tokens,group){
+
+return tokens.filter(
+t=>semanticGroups[group].includes(t)
+).length;
+
+}
+
+function detectScene(tokens){
+
+return {
+
+hasThreat:
+semanticCount(tokens,"threats") > 0,
+
+hasCaregiver:
+semanticCount(tokens,"caregivers") > 0,
+
+hasViolence:
+semanticCount(tokens,"violence") > 0,
+
+hasSurreal:
+semanticCount(tokens,"surreal") > 0,
+
+hasCity:
+tokens.includes("city") || tokens.includes("neon"),
+
+hasOcean:
+tokens.includes("ocean"),
+
+hasMaze:
+tokens.includes("maze")
+
+};
+
+}
+
+function calculateMetrics(tokens){
+
+const continuity =
+semanticCount(tokens,"connectors");
+
+const surreal =
+semanticCount(tokens,"surreal");
+
+const violence =
+semanticCount(tokens,"violence");
+
+const unique =
+new Set(tokens).size;
+
+const threat =
+semanticCount(tokens,"threats");
+
+const coherence = Math.min(
+1,
+(
+continuity * .18 +
+(unique/tokens.length) * .35 +
+(tokens.length/40) * .2 -
+surreal * .04
+)
+);
+
+const density = Math.min(
+1,
+(
+(unique/tokens.length) * .7 +
+surreal * .08 +
+threat * .05
+)
+);
+
+const instability = Math.min(
+100,
+(
+violence * 12 +
+surreal * 7 +
+(1-coherence) * 35
+)
+);
+
+return {
+coherence:coherence.toFixed(2),
+density:density.toFixed(2),
+instability:instability.toFixed(0)
+};
+
+}
+
+function detectArchetype(scene){
+
+if(scene.hasThreat && scene.hasCaregiver)
+return "Protection vs Shadow";
+
+if(scene.hasThreat)
+return "Shadow Conflict";
+
+if(scene.hasMaze)
+return "Cognitive Entrapment";
+
+if(scene.hasOcean)
+return "Emotional Descent";
+
+if(scene.hasSurreal)
+return "Reality Dissolution";
+
+return "Exploratory Dream Axis";
+
+}
+
+function drawBackground(emotion){
+
+let g =
+ctx.createLinearGradient(
+0,0,0,canvas.height
+);
+
+if(emotion==="Anxiety"){
+g.addColorStop(0,"#220814");
+g.addColorStop(1,"#000000");
+}
+
+else if(emotion==="Melancholy"){
+g.addColorStop(0,"#0b183f");
+g.addColorStop(1,"#000000");
+}
+
+else if(emotion==="Euphoria"){
+g.addColorStop(0,"#7c6620");
+g.addColorStop(1,"#080808");
+}
+
+else{
+g.addColorStop(0,"#04222c");
+g.addColorStop(1,"#000000");
+}
+
+ctx.fillStyle=g;
+ctx.fillRect(
+0,0,
+canvas.width,
+canvas.height
+);
+
+}
+
+function stars(){
+
+for(let i=0;i<160;i++){
+
+ctx.fillStyle =
+"rgba(255,255,255,.4)";
+
+ctx.beginPath();
+
+ctx.arc(
+Math.random()*canvas.width,
+Math.random()*canvas.height,
+Math.random()*2,
+0,
+Math.PI*2
+);
+
+ctx.fill();
+
+}
+
+}
+
+function neonCity(){
+
+for(let i=0;i<14;i++){
+
+const w = 70 + Math.random()*70;
+const h = 220 + Math.random()*250;
+
+const x = i * 120;
+
+ctx.fillStyle =
+"rgba(12,14,26,.95)";
+
+ctx.fillRect(
+x,
+canvas.height-h,
+w,
+h
+);
+
+ctx.strokeStyle =
+"rgba(0,229,255,.18)";
+
+ctx.strokeRect(
+x,
+canvas.height-h,
+w,
+h
+);
+
+}
+
+}
+
+function drawPerson(x,y,color){
+
+ctx.fillStyle=color;
+
+ctx.beginPath();
+ctx.arc(x,y-50,24,0,Math.PI*2);
+ctx.fill();
+
+ctx.fillRect(x-20,y-25,40,90);
+
+ctx.fillRect(x-46,y-15,24,12);
+ctx.fillRect(x+22,y-15,24,12);
+
+ctx.fillRect(x-15,y+65,10,40);
+ctx.fillRect(x+5,y+65,10,40);
+
+}
+
+function caregiverFigure(x,y){
+
+drawPerson(x,y,"#ffd7ea");
+
+ctx.fillStyle="#ff8ac7";
+
+ctx.beginPath();
+
+ctx.moveTo(x-35,y+10);
+ctx.lineTo(x+35,y+10);
+ctx.lineTo(x,y+95);
+
+ctx.closePath();
+ctx.fill();
+
+}
+
+function antagonistFigure(x,y){
+
+ctx.fillStyle="#8b2cff";
+
+ctx.beginPath();
+ctx.arc(x,y-60,30,0,Math.PI*2);
+ctx.fill();
+
+ctx.fillRect(x-28,y-30,56,95);
+
+ctx.strokeStyle="#ff004c";
+ctx.lineWidth=5;
+
+ctx.beginPath();
+ctx.moveTo(x+35,y-10);
+ctx.lineTo(x+150,y-45);
+ctx.stroke();
+
+ctx.strokeStyle="#ff3d3d";
+
+ctx.beginPath();
+ctx.moveTo(x-40,y-80);
+ctx.lineTo(x-10,y-120);
+ctx.lineTo(x+10,y-80);
+
+ctx.moveTo(x+40,y-80);
+ctx.lineTo(x+10,y-120);
+ctx.lineTo(x-10,y-80);
+
+ctx.stroke();
+
+}
+
+function drawScene(scene){
+
+if(scene.hasCity)
+neonCity();
+
+if(scene.hasCaregiver){
+
+caregiverFigure(
+canvas.width*.38,
+canvas.height*.73
+);
+
+}
+
+if(scene.hasThreat){
+
+antagonistFigure(
+canvas.width*.72,
+canvas.height*.64
+);
+
+}
+
+if(scene.hasThreat && scene.hasCaregiver){
+
+drawPerson(
+canvas.width*.52,
+canvas.height*.75,
+"#ffffff"
+);
+
+ctx.strokeStyle =
+"rgba(255,0,60,.7)";
+
+ctx.lineWidth=6;
+
+ctx.beginPath();
+
+ctx.moveTo(
+canvas.width*.72,
+canvas.height*.58
+);
+
+ctx.lineTo(
+canvas.width*.55,
+canvas.height*.68
+);
+
+ctx.stroke();
+
+}
+
+if(scene.hasOcean){
+
+ctx.fillStyle =
+"rgba(0,110,255,.24)";
+
+ctx.fillRect(
+0,
+canvas.height*.8,
+canvas.width,
+canvas.height*.2
+);
+
+}
+
+}
+
+function runRemnant(){
+
+const narrative =
+document.getElementById("narrative").value;
+
+const emotion =
+document.getElementById("emotion").value;
+
+const tokens =
+tokenize(narrative);
+
+const metrics =
+calculateMetrics(tokens);
+
+const scene =
+detectScene(tokens);
+
+const archetype =
+detectArchetype(scene);
+
+document.getElementById("coherence")
+.innerText =
+metrics.coherence;
+
+document.getElementById("density")
+.innerText =
+metrics.density;
+
+document.getElementById("instability")
+.innerText =
+metrics.instability + "%";
+
+document.getElementById("archetype")
+.innerText =
+archetype;
+
+document.getElementById("coherenceDesc")
+.innerText =
+"High continuity and stable narrative sequencing detected.";
+
+document.getElementById("densityDesc")
+.innerText =
+"Rich symbolic layering and semantic overlap identified.";
+
+document.getElementById("instabilityDesc")
+.innerText =
+"Emotional volatility and surreal fragmentation elevated.";
+
+document.getElementById("archDesc")
+.innerText =
+"Derived from dominant subconscious relational patterns.";
+
+document.getElementById("analysisText")
+.innerText =
+`REMNANT detected a ${archetype.toLowerCase()} structure. 
+The dream exhibits a semantic density of ${metrics.density}, 
+indicating layered symbolic compression. Instability reached 
+${metrics.instability}% due to emotional conflict and surreal 
+distortion markers. Narrative coherence stabilized at 
+${metrics.coherence}, suggesting partial subconscious continuity.`;
+
+drawBackground(emotion);
+
+stars();
+
+drawScene(scene);
+
+}
+
+runRemnant();
+
+</script>
+
+</body>
+</html>
